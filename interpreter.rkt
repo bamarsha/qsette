@@ -32,7 +32,7 @@
          (environment (dict-set (environment-variables env*) id value)
                       (environment-state env*)))]
       [`(using (,qubits ...) ,stmts ...)
-       (let* ([next-id (if (= 0 (length state)) 0 (log (length state) 2))]
+       (let* ([next-id (if (empty? state) 0 (log (length state) 2))]
               [variables* (foldl (lambda (q id vs) (dict-set vs q id))
                            variables
                            qubits
