@@ -25,6 +25,8 @@
     (0 1)))
 
 (define (interpret-stmt stmt env)
+  ; TODO: Should check if the return value of a recursive interpret-stmt is an
+  ; environment or not (in case of an early return statement).
   (let ([variables (environment-variables env)]
         [state (environment-state env)])
     (match stmt
@@ -56,7 +58,9 @@
                                                        (expt 2 (length qubits)))
                                                     (const 0))))])
          (foldl interpret-stmt (environment variables* state*) stmts))]
-      [`(return ,expr) (error "return not implemented")]
+      [`(return ,expr)
+       (let-values ([(value env) (interpret-expr expr env)])
+         value)]
       [expr
        (let-values ([(value env*) (interpret-expr expr env)])
          env*)])))
@@ -69,7 +73,8 @@
        (values
         (void)
         (environment variables
-                     (apply-to-qubit x-gate (dict-ref variables q) state)))]
+                     (column-vector->list
+                      (apply-to-qubit x-gate (dict-ref variables q) state))))]
       [`(m ,q)
        (let-values ([(result state*) (measure state (dict-ref variables q))])
          (values result (environment variables state*)))]
