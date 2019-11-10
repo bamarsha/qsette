@@ -1,17 +1,10 @@
 #lang rosette
 
-(struct environment (variables state) #:transparent)
+(provide environment
+         interpret-stmt
+         interpret-expr)
 
-(define (example1 b)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using (q)
-                            (if b
-                                (x q))
-                            (set r (m q))
-                            (reset q))
-                     (return r))
-                  (environment (list `(b . ,b)) (list))))
+(struct environment (variables state) #:transparent)
 
 (define (interpret-stmt stmt env)
   (let ([variables (environment-variables env)]
@@ -58,5 +51,3 @@
       [`(reset ,q) (error "reset not implemented")]
       [(? boolean?) (values expr env)]
       [id (values (dict-ref variables id) env)])))
-
-(example1 #f)
