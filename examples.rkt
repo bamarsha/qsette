@@ -15,3 +15,7 @@
 
 (example1 #f)
 (example1 #t)
+
+(define-symbolic x boolean?)
+(example1 x)
+(verify (assert (= x (example1 x))))

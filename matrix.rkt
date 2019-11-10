@@ -11,6 +11,12 @@
          list->column-vector
          column-vector->list)
 
+(require rosette/lib/lift)
+(require (only-in racket [conjugate racket/conjugate] number?))
+
+; TODO: This doesn't work? :(
+(define-lift conjugate [(number?) racket/conjugate])
+
 (define (transpose a)
   (apply map list a))
 
