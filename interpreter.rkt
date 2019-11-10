@@ -8,9 +8,13 @@
 
 (struct environment (variables state) #:transparent)
 
-(define identity-operator
+(define identity-gate
   '((1 0)
     (0 1)))
+
+(define x-gate
+  '((0 1)
+    (1 0)))
 
 (define select-zero
   '((1 0)
@@ -52,6 +56,7 @@
                                                        (expt 2 (length qubits)))
                                                     (const 0))))])
          (foldl interpret-stmt (environment variables* state*) stmts))]
+      [`(return ,expr) (error "return not implemented")]
       [expr
        (let-values ([(value env*) (interpret-expr expr env)])
          env*)])))
@@ -60,18 +65,25 @@
   (let ([variables (environment-variables env)]
         [state (environment-state env)])
     (match expr
-      [`(x ,q) (error "X gate not implemented")]
+      [`(x ,q)
+       (values
+        (void)
+        (environment variables
+                     (apply-to-qubit x-gate (dict-ref variables q) state)))]
       [`(m ,q)
        (let-values ([(result state*) (measure state (dict-ref variables q))])
          (values result (environment variables state*)))]
-      [`(reset ,q) (error "reset not implemented")]
+      [`(reset ,q)
+       (values (void) (interpret-stmt `(if (m ,q)
+                                           (x ,q))
+                                      env))]
       [(? boolean?) (values expr env)]
       [id (values (dict-ref variables id) env)])))
 
 (define (apply-to-qubit operator qubit state)
   (let ([operators (build-list
                     (num-qubits state)
-                    (lambda (i) (if (= i qubit) operator identity-operator)))])
+                    (lambda (i) (if (= i qubit) operator identity-gate)))])
     (matrix-multiply (foldl kronecker-product (car operators) (cdr operators))
                      (list->column-vector state))))
 
@@ -83,8 +95,10 @@
     ; For now, just choose the result with higher probability.
     ; TODO: Remember both results somehow.
     (if (> zero-probability one-probability)
-        (values #f (scale (/ 1 (sqrt zero-probability)) zero-state))
-        (values #t (scale (/ 1 (sqrt one-probability)) one-state)))))
+        (values #f (column-vector->list
+                    (scale (/ 1 (sqrt zero-probability)) zero-state)))
+        (values #t (column-vector->list
+                    (scale (/ 1 (sqrt one-probability)) one-state))))))
 
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))

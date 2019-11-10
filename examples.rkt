@@ -14,3 +14,4 @@
                   (environment (list `(b . ,b)) (list))))
 
 (example1 #f)
+(example1 #t)

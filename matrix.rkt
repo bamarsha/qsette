@@ -8,7 +8,8 @@
          inner-product
          vector-magnitude-sq
          kronecker-product
-         list->column-vector)
+         list->column-vector
+         column-vector->list)
 
 (define (transpose a)
   (apply map list a))
@@ -41,6 +42,9 @@
 
 (define (list->column-vector l)
   (map list l))
+
+(define (column-vector->list v)
+  (map (match-lambda [`(,x) x]) v))
 
 (define (matrix-map f a)
   (map (lambda (row) (map f row)) a))
