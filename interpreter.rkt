@@ -47,21 +47,8 @@
              (environment (dict-set (environment-variables env*) id value)
                           (environment-state env*)))]
           [`(using (,qubits ...) ,stmts ...)
-           (let* ([next-id (if (empty? state) 0 (num-qubits state))]
-                  [variables* (foldl (lambda (q id vs) (dict-set vs q id))
-                                     variables
-                                     qubits
-                                     (stream->list
-                                      (stream-take (in-naturals next-id)
-                                                   (length qubits))))]
-                  [state* (if (empty? state)
-                              (build-list (expt 2 (length qubits))
-                                          (lambda (i) (if (= 0 i) 1 0)))
-                              (append state
-                                      (build-list (* (length state)
-                                                     (expt 2 (length qubits)))
-                                                  (const 0))))])
-             (foldl interpret-stmt (environment variables* state*) stmts))]
+           (remove-qubits qubits
+                          (foldl interpret-stmt (add-qubits qubits env) stmts))]
           [`(return ,expr)
            (let-values ([(value env) (interpret-expr expr env)])
              value)]
@@ -111,3 +98,32 @@
 
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))
+
+(define (add-qubits qubits env)
+  (let* ([variables (environment-variables env)]
+         [state (environment-state env)]
+         [next-id (if (empty? state) 0 (num-qubits state))]
+         [variables* (foldl (lambda (q id vs) (dict-set vs q id))
+                            variables
+                            qubits
+                            (stream->list
+                             (stream-take (in-naturals next-id)
+                                          (length qubits))))]
+         [state* (if (empty? state)
+                     (build-list (expt 2 (length qubits))
+                                 (lambda (i) (if (= 0 i) 1 0)))
+                     (append state
+                             (build-list (* (length state)
+                                            (expt 2 (length qubits)))
+                                         (const 0))))])
+    (environment variables* state*)))
+
+(define (remove-qubits qubits env)
+  (let* ([variables (environment-variables env)]
+         [state (environment-state env)]
+         [variables* (foldl (lambda (q vs) (dict-remove vs q))
+                            variables
+                            qubits)]
+         [state* (take state (/ (length state) (expt 2 (length qubits))))])
+    ; TODO: Check that released qubits are all zero?
+    (environment variables* state*)))
