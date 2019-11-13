@@ -1,6 +1,7 @@
 #lang rosette
 
-(require "matrix.rkt")
+
+(require "matrix.rkt" "complex.rkt")
 
 (provide environment
          interpret-stmt
@@ -8,7 +9,7 @@
 
 (struct environment (variables state) #:transparent)
 
-(define identity-gate
+(define identity-gate 
   '((1 0)
     (0 1)))
 
@@ -47,10 +48,10 @@
       [`(using (,qubits ...) ,stmts ...)
        (let* ([next-id (if (empty? state) 0 (num-qubits state))]
               [variables* (foldl (lambda (q id vs) (dict-set vs q id))
-                           variables
-                           qubits
-                           (stream->list (stream-take (in-naturals next-id)
-                                                      (length qubits))))]
+                                 variables
+                                 qubits
+                                 (stream->list (stream-take (in-naturals next-id)
+                                                            (length qubits))))]
               [state* (if (empty? state)
                           (build-list (expt 2 (length qubits))
                                       (lambda (i) (if (= 0 i) 1 0)))
@@ -99,11 +100,13 @@
          [one-probability (vector-magnitude-sq one-state)])
     ; For now, just choose the result with higher probability.
     ; TODO: Remember both results somehow.
+    ;    (println zero-probability)
     (if (> zero-probability one-probability)
         (values #f (column-vector->list
                     (scale (/ 1 (sqrt zero-probability)) zero-state)))
         (values #t (column-vector->list
-                    (scale (/ 1 (sqrt one-probability)) one-state))))))
+                    (scale (/ 1 (sqrt one-probability)) one-state))))
+    ))
 
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))

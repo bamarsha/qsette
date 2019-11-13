@@ -9,13 +9,15 @@
          vector-magnitude-sq
          kronecker-product
          list->column-vector
-         column-vector->list)
+         column-vector->list
+         matrix-map)
 
-(require rosette/lib/lift)
-(require (only-in racket [conjugate racket/conjugate] number?))
+;(require rosette/lib/lift)
+;(require (only-in racket [conjugate racket/conjugate] number?))
+(require "complex.rkt")
 
 ; TODO: This doesn't work? :(
-(define-lift conjugate [(number?) racket/conjugate])
+;(define-lift conjugate [(number?) conjugate])
 
 (define (transpose a)
   (apply map list a))
@@ -38,7 +40,7 @@
   (matrix-multiply (adjoint a) b))
 
 (define (vector-magnitude-sq v)
-  (match (inner-product v v)
+  (match (matrix-map from-complex (inner-product v v))
     [`((,x)) x]))
 
 (define (kronecker-product a b)
@@ -54,3 +56,5 @@
 
 (define (matrix-map f a)
   (map (lambda (row) (map f row)) a))
+
+
