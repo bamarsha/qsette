@@ -23,24 +23,24 @@
   (apply map list a))
 
 (define (matrix-conjugate a)
-  (matrix-map conjugate a))
+  (matrix-map complex/conjugate a))
 
 (define (adjoint a)
   (matrix-conjugate (transpose a)))
 
 (define (scale c a)
-  (matrix-map (lambda (x) (* c x)) a))
+  (matrix-map (lambda (x) (complex/* c x)) a))
 
 (define (matrix-multiply a b)
   (for/list ([a-row a])
     (for/list ([b-row (transpose b)])
-      (apply + (map * a-row b-row)))))
+      (apply complex/+ (map complex/* a-row b-row)))))
 
 (define (inner-product a b)
   (matrix-multiply (adjoint a) b))
 
 (define (vector-magnitude-sq v)
-  (match (matrix-map from-complex (inner-product v v))
+  (match (matrix-map complex-real (inner-product v v))
     [`((,x)) x]))
 
 (define (kronecker-product a b)

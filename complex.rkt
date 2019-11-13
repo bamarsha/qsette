@@ -1,55 +1,64 @@
 #lang rosette
 
 ; Should be a better way of doing this
-(require (only-in racket (* racket/*))
-         (only-in racket (+ racket/+))
-         (only-in racket (> racket/>))
-         (only-in racket (sqrt racket/sqrt))
-         (only-in racket (conjugate racket/conjugate)))
+;(require (only-in racket (* racket/*))
+;         (only-in racket (+ racket/+))
+;         (only-in racket (> racket/>))
+;         (only-in racket (sqrt racket/sqrt))
+;         (only-in racket (conjugate racket/conjugate)))
 
-(provide + * > conjugate to-complex from-complex)
+
+;(provide + * > conjugate to-complex from-complex)
+
+(provide complex/+ complex/* complex/conjugate complex complex-real complex-imag)
 
 (struct complex (real imag) #:transparent)
 
-; Could have these accept racket and our numbers and just check type
-; + Would not have to use to-complex in interpreter.rkt
-; + Functions could accept either
-; - Might hide some bugs to do with wrong types
 (define (to-complex c)
   (if (not (number? c)) c
       (complex (real-part c) (imag-part c))))
-
-(define (from-complex c)
-  (if (number? c) c
-      (racket/+ (complex-real c) (racket/* 0+1i (complex-imag c)))))
+;
+;(define (from-complex c)
+;  (if (number? c) c
+;      (racket/+ (complex-real c) (racket/* 0+1i (complex-imag c)))))
 
 ; This seems like it should be done with define-lift but maybe our structs arre getting in the way
-(define (* . cs)
-  (to-complex (apply racket/* (map from-complex cs))))
+;(define (* . cs)
+;  (to-complex (apply racket/* (map from-complex cs))))
+;
+;(define (+ . cs)
+;  (to-complex (apply racket/+ (map from-complex cs))))
+;
+;; Needed for the comparison
+;(define (> c1 c2)
+;  (racket/> (from-complex c1) (from-complex c2)))
+;
+(define (complex/conjugate c)
+  (match-let ([(complex a b) c])
+    (complex a (- b))))
+;
+;(define (sqrt c)
+;  (to-complex (racket/sqrt (from-complex c))))
 
-(define (+ . cs)
-  (to-complex (apply racket/+ (map from-complex cs))))
+(define (complex/+ . cs)
+  (foldl add 0 cs))
 
-; Needed for the comparison
-(define (> c1 c2)
-  (racket/> (from-complex c1) (from-complex c2)))
-
-(define (conjugate c)
-  (to-complex (racket/conjugate (from-complex c))))
-
-(define (sqrt c)
-  (to-complex (racket/sqrt (from-complex c))))
-
-; TODO: delete these as they are no longer needed
+(define (complex/* . cs)
+  (foldl mul 0 cs))
+  
 (define (add c1 c2)
-  (complex (+ (complex-real c1)
-              (complex-real c2))
-           (+ (complex-imag c1)
-              (complex-imag c2))))
+  (let ([c1 (to-complex c1)]
+        [c2 (to-complex c2)])
+    (complex (+ (complex-real c1)
+                (complex-real c2))
+             (+ (complex-imag c1)
+                (complex-imag c2)))))
 
 (define (mul c1 c2)
-  (match-let*
-      ([(complex a b) c1]
-       [(complex c d) c2])
-    (complex (- (* a c) (* b d))
-             (+ (* a d) (* b c)))))
+  (let ([c1 (to-complex c1)]
+        [c2 (to-complex c2)])
+    (match-let*
+        ([(complex a b) c1]
+         [(complex c d) c2])
+      (complex (- (* a c) (* b d))
+               (+ (* a d) (* b c))))))
