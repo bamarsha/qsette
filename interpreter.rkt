@@ -91,7 +91,6 @@
          [one-probability (vector-magnitude-sq one-state)])
     ; For now, just choose the result with higher probability.
     ; TODO: Remember both results somehow.
-    ;    (println zero-probability)
     (if (> zero-probability one-probability)
         (values #f (column-vector->list
                     (scale (/ 1 (sqrt zero-probability)) zero-state)))
