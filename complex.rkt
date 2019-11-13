@@ -44,7 +44,7 @@
   (foldl add 0 cs))
 
 (define (complex/* . cs)
-  (foldl mul 0 cs))
+  (foldl mul 1 cs))
   
 (define (add c1 c2)
   (let ([c1 (to-complex c1)]
