@@ -1,7 +1,8 @@
 #lang rosette
 
 
-(require "matrix.rkt" "complex.rkt")
+(require "complex.rkt"
+         "matrix.rkt")
 
 (provide environment
          interpret-stmt
@@ -10,20 +11,20 @@
 (struct environment (variables state) #:transparent)
 
 (define identity-gate 
-  '((1 0)
-    (0 1)))
+  `((,(complex 1 0) ,(complex 0 0))
+    (,(complex 0 0) ,(complex 1 0))))
 
 (define x-gate
-  '((0 1)
-    (1 0)))
+  `((,(complex 0 0) ,(complex 1 0))
+    (,(complex 1 0) ,(complex 0 0))))
 
 (define select-zero
-  '((1 0)
-    (0 0)))
+  `((,(complex 1 0) ,(complex 0 0))
+    (,(complex 0 0) ,(complex 0 0))))
 
 (define select-one
-  '((0 0)
-    (0 1)))
+  `((,(complex 0 0) ,(complex 0 0))
+    (,(complex 0 0) ,(complex 1 0))))
 
 (define (interpret-stmt stmt env)
   (if (not (environment? env))
@@ -91,12 +92,14 @@
          [one-probability (vector-magnitude-sq one-state)])
     ; For now, just choose the result with higher probability.
     ; TODO: Remember both results somehow.
-    (if (> zero-probability one-probability)
+    ; TODO: sqrt is not supported for ite reals.
+    (if (>= zero-probability one-probability)
         (values #f (column-vector->list
-                    (scale (/ 1 (sqrt zero-probability)) zero-state)))
+                    (scale (complex (/ 1 (sqrt zero-probability)) 0)
+                           zero-state)))
         (values #t (column-vector->list
-                    (scale (/ 1 (sqrt one-probability)) one-state))))
-    ))
+                    (scale (complex (/ 1 (sqrt one-probability)) 0)
+                           one-state))))))
 
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))
@@ -113,11 +116,12 @@
                                           (length qubits))))]
          [state* (if (empty? state)
                      (build-list (expt 2 (length qubits))
-                                 (lambda (i) (if (= 0 i) 1 0)))
+                                 (lambda (i)
+                                   (if (= 0 i) (complex 1 0) (complex 0 0))))
                      (append state
                              (build-list (* (length state)
                                             (expt 2 (length qubits)))
-                                         (const 0))))])
+                                         (const (complex 0 0)))))])
     (environment variables* state*)))
 
 (define (remove-qubits qubits env)
