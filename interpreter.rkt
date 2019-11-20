@@ -69,7 +69,7 @@
                      (column-vector->list
                       (apply-to-qubit x-gate (dict-ref variables q) state))))]
       [`(m ,q)
-       (let-values ([(result state*) (measure state (dict-ref variables q))])
+       (match-let ([`(,result ,state*) (measure state (dict-ref variables q))])
          (values result (environment variables state*)))]
       [`(reset ,q)
        (values (void) (interpret-stmt `(if (m ,q)
@@ -86,20 +86,18 @@
                      (list->column-vector state))))
 
 (define (measure state qubit)
-  (let* ([zero-state (apply-to-qubit select-zero qubit state)]
-         [zero-probability (vector-magnitude-sq zero-state)]
+  ; The state vector is unnormalized, so remember to divide the probability by
+  ; the state vector's magnitude squared.
+  (let* ([state-mag-sq (vector-magnitude-sq (list->column-vector state))]
+         [zero-state (apply-to-qubit select-zero qubit state)]
+         [zero-probability (/ (vector-magnitude-sq zero-state) state-mag-sq)]
          [one-state (apply-to-qubit select-one qubit state)]
-         [one-probability (vector-magnitude-sq one-state)])
+         [one-probability (/ (vector-magnitude-sq one-state) state-mag-sq)])
     ; For now, just choose the result with higher probability.
     ; TODO: Remember both results somehow.
-    ; TODO: sqrt is not supported for ite reals.
     (if (>= zero-probability one-probability)
-        (values #f (column-vector->list
-                    (scale (complex (/ 1 (sqrt zero-probability)) 0)
-                           zero-state)))
-        (values #t (column-vector->list
-                    (scale (complex (/ 1 (sqrt one-probability)) 0)
-                           one-state))))))
+        `(#f ,(column-vector->list zero-state))
+        `(#t ,(column-vector->list one-state)))))
 
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))
@@ -120,7 +118,7 @@
                                    (if (= 0 i) (complex 1 0) (complex 0 0))))
                      (append state
                              (build-list (* (length state)
-                                            (expt 2 (length qubits)))
+                                            (- (expt 2 (length qubits)) 1))
                                          (const (complex 0 0)))))])
     (environment variables* state*)))
 

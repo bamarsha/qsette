@@ -13,13 +13,26 @@
                      (return r))
                   (environment (list `(b . ,b)) (list))))
 
+(define (example1-wrong b)
+  (interpret-stmt '(begin
+                     (mutable r #f)
+                     (using (q)
+                            (x q)
+                            (set r (m q))
+                            (reset q))
+                     (return r))
+                  (environment (list `(b . ,b)) (list))))
 
-(example1 #f)
-(example1 #t)
+(printf "example1(#f) = ~a\n" (example1 #f))
+(printf "example1(#t) = ~a\n" (example1 #t))
+
+(newline)
 
 (define-symbolic x boolean?)
-(example1 x)
-(verify (assert (= x (example1 x))))
+(printf "verify example1: ~a\n"
+        (verify (assert (equal? x (example1 x)))))
+(printf "verify example1-wrong: ~a\n"
+        (verify (assert (equal? x (example1-wrong x)))))
 
 (define (no-arg)
   (interpret-stmt '(begin
@@ -28,8 +41,6 @@
                             (set r (m q1)))
                      (return r))
                   (environment (list) (list))))
-
-(no-arg)
 
 (define (many-qbits)
   (interpret-stmt '(begin
