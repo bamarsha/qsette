@@ -18,6 +18,18 @@
   `((,(complex 0 0) ,(complex 1 0))
     (,(complex 1 0) ,(complex 0 0))))
 
+(define z-gate
+  `((,(complex 1 0) ,(complex 1 0))
+    (,(complex 0 0) ,(complex -1 0))))
+
+(define h-gate
+  `((,(complex (/ 1 (sqrt 2)) 0) ,(complex (/ 1 (sqrt 2)) 0))
+    (,(complex (/ 1 (sqrt 2)) 0) ,(complex (/ -1 (sqrt 2)) 0))))
+
+(define t-gate
+  `((,(complex 1 0) ,(complex 0 0))
+    (,(complex 0 0) ,(complex (/ 1 (sqrt 2)) (/ 1 (sqrt 2))))))
+
 (define select-zero
   `((,(complex 1 0) ,(complex 0 0))
     (,(complex 0 0) ,(complex 0 0))))
@@ -59,15 +71,21 @@
              env*)]))))
 
 (define (interpret-expr expr env)
-  (let ([variables (environment-variables env)]
-        [state (environment-state env)])
+  (let* ([variables (environment-variables env)]
+         [state (environment-state env)]
+         [apply-gate
+          (lambda (gate qubit)
+            (values (void)
+                    (environment variables
+                                 (column-vector->list
+                                  (apply-to-qubit gate
+                                                  (dict-ref variables qubit)
+                                                  state)))))])
     (match expr
-      [`(x ,q)
-       (values
-        (void)
-        (environment variables
-                     (column-vector->list
-                      (apply-to-qubit x-gate (dict-ref variables q) state))))]
+      [`(x ,q) (apply-gate x-gate q)]
+      [`(z ,q) (apply-gate z-gate q)]
+      [`(h ,q) (apply-gate h-gate q)]
+      [`(t ,q) (apply-gate t-gate q)]
       [`(m ,q)
        (match-let ([`(,result ,state*) (measure state (dict-ref variables q))])
          (values result (environment variables state*)))]

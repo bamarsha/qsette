@@ -34,6 +34,44 @@
 (printf "verify example1-wrong: ~a\n"
         (verify (assert (equal? x (example1-wrong x)))))
 
+(newline)
+
+(define (example2 b)
+  (interpret-stmt '(begin
+                     (mutable r #f)
+                     (using (q)
+                            (h q)
+                            (if b
+                                (z q))
+                            (t q)
+                            (h q)
+                            (set r (m q))
+                            (reset q))
+                     (return r))
+                  (environment (list `(b . ,b)) (list))))
+
+(define (example2-wrong b)
+  (interpret-stmt '(begin
+                     (mutable r #f)
+                     (using (q)
+                            (h q)
+                            (t q)
+                            (h q)
+                            (set r (m q))
+                            (reset q))
+                     (return r))
+                  (environment (list `(b . ,b)) (list))))
+
+(printf "example2(#f) = ~a\n" (example2 #f))
+(printf "example2(#t) = ~a\n" (example2 #t))
+
+(newline)
+
+(printf "verify example2: ~a\n"
+        (verify (assert (equal? x (example2 x)))))
+(printf "verify example2-wrong: ~a\n"
+        (verify (assert (equal? x (example2-wrong x)))))
+
 (define (no-arg)
   (interpret-stmt '(begin
                      (mutable r #f)
