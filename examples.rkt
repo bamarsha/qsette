@@ -1,6 +1,7 @@
 #lang rosette
 
-(require "interpreter.rkt")
+(require "interpreter.rkt"
+         "probability.rkt")
 
 (define (example1 b)
   (interpret-stmt '(begin
@@ -11,7 +12,7 @@
                             (set r (m q))
                             (reset q))
                      (return r))
-                  (environment (list `(b . ,b)) (list))))
+                  (environment (list `(b . ,b)) (list) (list))))
 
 (define (example1-wrong b)
   (interpret-stmt '(begin
@@ -21,19 +22,19 @@
                             (set r (m q))
                             (reset q))
                      (return r))
-                  (environment (list `(b . ,b)) (list))))
+                  (environment (list `(b . ,b)) (list) (list))))
 
-(printf "example1(#f) = ~a\n" (example1 #f))
-(printf "example1(#t) = ~a\n" (example1 #t))
-
+(printf "Pr(example1(#f) = #f) = ~a\n" (probability/v (example1 #f) #f))
+(printf "Pr(example1(#t) = #t) = ~a\n" (probability/v (example1 #t) #t))
 (newline)
 
 (define-symbolic x boolean?)
-(printf "verify example1: ~a\n"
-        (verify (assert (equal? x (example1 x)))))
-(printf "verify example1-wrong: ~a\n"
-        (verify (assert (equal? x (example1-wrong x)))))
+(printf "Pr(example1(x) = x) = 1?\n~a\n"
+        (verify (assert (= 1 (probability/v (example1 x) x)))))
+(newline)
 
+(printf "Pr(example1-wrong(x) = x) = 1?\n~a\n"
+        (verify (assert (= 1 (probability/v (example1-wrong x) x)))))
 (newline)
 
 (define (example2 b)
@@ -48,7 +49,7 @@
                             (set r (m q))
                             (reset q))
                      (return r))
-                  (environment (list `(b . ,b)) (list))))
+                  (environment (list `(b . ,b)) (list) (list))))
 
 (define (example2-wrong b)
   (interpret-stmt '(begin
@@ -60,29 +61,38 @@
                             (set r (m q))
                             (reset q))
                      (return r))
-                  (environment (list `(b . ,b)) (list))))
+                  (environment (list `(b . ,b)) (list) (list))))
 
-(printf "example2(#f) = ~a\n" (example2 #f))
-(printf "example2(#t) = ~a\n" (example2 #t))
-
+(printf "Pr(example2(#f) = #f) = ~a\n" (probability/v (example2 #f) #f))
+(printf "Pr(example2(#t) = #t) = ~a\n" (probability/v (example2 #t) #t))
 (newline)
 
-(printf "verify example2: ~a\n"
-        (verify (assert (equal? x (example2 x)))))
-(printf "verify example2-wrong: ~a\n"
-        (verify (assert (equal? x (example2-wrong x)))))
+(printf "Pr(example2(x) = x) >= 0.7?\n~a\n"
+        (verify (assert (<= 0.7 (probability/v (example2 x) x)))))
+(newline)
 
-(define (no-arg)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using (q1)
-                            (set r (m q1)))
-                     (return r))
-                  (environment (list) (list))))
+(printf "Pr(example2(x) = x) >= 0.8?\n~a\n"
+        (verify (assert (<= 0.8 (probability/v (example2 x) x)))))
+(newline)
 
-(define (many-qbits)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using (q1 q2 q3 q4 q5)
-                            (set r (m q1)))
-                     (return r))))
+(printf "Pr(example2-wrong(x) = x) >= 0.7?\n~a\n"
+        (verify (assert (<= 0.7 (probability/v (example2-wrong x) x)))))
+(newline)
+
+(printf "Pr(example2-wrong(x) = x) >= 0.1?\n~a\n"
+        (verify (assert (<= 0.1 (probability/v (example2-wrong x) x)))))
+
+;; (define (no-arg)
+;;   (interpret-stmt '(begin
+;;                      (mutable r #f)
+;;                      (using (q1)
+;;                             (set r (m q1)))
+;;                      (return r))
+;;                   (environment (list) (list) (list))))
+
+;; (define (many-qbits)
+;;   (interpret-stmt '(begin
+;;                      (mutable r #f)
+;;                      (using (q1 q2 q3 q4 q5)
+;;                             (set r (m q1)))
+;;                      (return r))))

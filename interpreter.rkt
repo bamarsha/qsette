@@ -1,6 +1,5 @@
 #lang rosette
 
-
 (require "complex.rkt"
          "matrix.rkt")
 
@@ -8,7 +7,7 @@
          interpret-stmt
          interpret-expr)
 
-(struct environment (variables state) #:transparent)
+(struct environment (variables state probabilities) #:transparent)
 
 (define identity-gate 
   `((,(complex 1 0) ,(complex 0 0))
@@ -59,13 +58,14 @@
           [`(set ,id ,expr)
            (let-values ([(value env*) (interpret-expr expr env)])
              (environment (dict-set (environment-variables env*) id value)
-                          (environment-state env*)))]
+                          (environment-state env*)
+                          (environment-probabilities env*)))]
           [`(using (,qubits ...) ,stmts ...)
            (remove-qubits qubits
                           (foldl interpret-stmt (add-qubits qubits env) stmts))]
           [`(return ,expr)
-           (let-values ([(value env) (interpret-expr expr env)])
-             value)]
+           (let-values ([(value env*) (interpret-expr expr env)])
+             `(,value ,(environment-probabilities env*)))]
           [expr
            (let-values ([(value env*) (interpret-expr expr env)])
              env*)]))))
@@ -73,22 +73,29 @@
 (define (interpret-expr expr env)
   (let* ([variables (environment-variables env)]
          [state (environment-state env)]
+         [probabilities (environment-probabilities env)]
          [apply-gate
           (lambda (gate qubit)
-            (values (void)
-                    (environment variables
-                                 (column-vector->list
-                                  (apply-to-qubit gate
-                                                  (dict-ref variables qubit)
-                                                  state)))))])
+            (values
+             (void)
+             (environment variables
+                          (column-vector->list
+                           (apply-to-qubit gate
+                                           (dict-ref variables qubit)
+                                           state))
+                          probabilities)))])
     (match expr
       [`(x ,q) (apply-gate x-gate q)]
       [`(z ,q) (apply-gate z-gate q)]
       [`(h ,q) (apply-gate h-gate q)]
       [`(t ,q) (apply-gate t-gate q)]
       [`(m ,q)
-       (match-let ([`(,result ,state*) (measure state (dict-ref variables q))])
-         (values result (environment variables state*)))]
+       (match-let ([`(,result ,state* (,condition ,probability))
+                    (measure state (dict-ref variables q))])
+         (values result
+                 (environment variables
+                              state*
+                              (dict-set probabilities condition probability))))]
       [`(reset ,q)
        (values (void) (interpret-stmt `(if (m ,q)
                                            (x ,q))
@@ -108,14 +115,12 @@
   ; the state vector's magnitude squared.
   (let* ([state-mag-sq (vector-magnitude-sq (list->column-vector state))]
          [zero-state (apply-to-qubit select-zero qubit state)]
-         [zero-probability (/ (vector-magnitude-sq zero-state) state-mag-sq)]
          [one-state (apply-to-qubit select-one qubit state)]
-         [one-probability (/ (vector-magnitude-sq one-state) state-mag-sq)])
-    ; For now, just choose the result with higher probability.
-    ; TODO: Remember both results somehow.
-    (if (>= zero-probability one-probability)
-        `(#f ,(column-vector->list zero-state))
-        `(#t ,(column-vector->list one-state)))))
+         [probability (/ (vector-magnitude-sq one-state) state-mag-sq)])
+    (define-symbolic* m boolean?)
+    `(,m
+      ,(column-vector->list (if m one-state zero-state))
+      (,m ,probability))))
 
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))
@@ -138,7 +143,7 @@
                              (build-list (* (length state)
                                             (- (expt 2 (length qubits)) 1))
                                          (const (complex 0 0)))))])
-    (environment variables* state*)))
+    (environment variables* state* (environment-probabilities env))))
 
 (define (remove-qubits qubits env)
   (let* ([variables (environment-variables env)]
@@ -148,4 +153,4 @@
                             qubits)]
          [state* (take state (/ (length state) (expt 2 (length qubits))))])
     ; TODO: Check that released qubits are all zero?
-    (environment variables* state*)))
+    (environment variables* state* (environment-probabilities env))))
