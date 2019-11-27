@@ -35,6 +35,10 @@
   (let ([rv (random-variables-only probabilities solution)])
     (if (predicate (evaluate value (sat rv)))
         (apply * (hash-map rv (lambda (key value)
+                                ; TODO: Might need to evaluate this expression
+                                ; using a model of all the probabilities.  The
+                                ; final expression should only be in terms of
+                                ; non-random variables.
                                 (if value
                                     (dict-ref probabilities key)
                                     (- 1 (dict-ref probabilities key))))))
