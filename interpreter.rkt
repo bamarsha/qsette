@@ -90,12 +90,12 @@
       [`(h ,q) (apply-gate h-gate q)]
       [`(t ,q) (apply-gate t-gate q)]
       [`(m ,q)
-       (match-let ([`(,result ,state* (,condition ,probability))
+       (match-let ([`(,result ,state* ,probability)
                     (measure state (dict-ref variables q))])
          (values result
                  (environment variables
                               state*
-                              (dict-set probabilities condition probability))))]
+                              (dict-set probabilities result probability))))]
       [`(reset ,q)
        (values (void) (interpret-stmt `(if (m ,q)
                                            (x ,q))
@@ -120,7 +120,7 @@
     (define-symbolic* m boolean?)
     `(,m
       ,(column-vector->list (if m one-state zero-state))
-      (,m ,probability))))
+      ,probability)))
 
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))
