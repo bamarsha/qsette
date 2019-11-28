@@ -25,7 +25,9 @@
                   (environment (list `(b . ,b)) (list) (list))))
 
 (printf "Pr(example1(#f) = #f) = ~a\n" (probability/v (example1 #f) #f))
+(clear-asserts!)
 (printf "Pr(example1(#t) = #t) = ~a\n" (probability/v (example1 #t) #t))
+(clear-asserts!)
 (newline)
 
 (define-symbolic x boolean?)
@@ -64,7 +66,9 @@
                   (environment (list `(b . ,b)) (list) (list))))
 
 (printf "Pr(example2(#f) = #f) = ~a\n" (probability/v (example2 #f) #f))
+(clear-asserts!)
 (printf "Pr(example2(#t) = #t) = ~a\n" (probability/v (example2 #t) #t))
+(clear-asserts!)
 (newline)
 
 (printf "Pr(example2(x) = x) >= 0.7?\n~a\n"

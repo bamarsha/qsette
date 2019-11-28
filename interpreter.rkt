@@ -116,7 +116,9 @@
   (let* ([state-mag-sq (vector-magnitude-sq (list->column-vector state))]
          [zero-state (apply-to-qubit select-zero qubit state)]
          [one-state (apply-to-qubit select-one qubit state)]
-         [probability (/ (vector-magnitude-sq one-state) state-mag-sq)])
+         [probability (if (= 0 state-mag-sq)
+                          0
+                          (/ (vector-magnitude-sq one-state) state-mag-sq))])
     (define-symbolic* m boolean?)
     `(,m
       ,(column-vector->list (if m one-state zero-state))

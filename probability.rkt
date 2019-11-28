@@ -12,8 +12,6 @@
                                                         solver
                                                         first-solution))])
     (solver 'shutdown)
-    ; TODO: Shouldn't need to clear the assertion store...
-    (clear-asserts!)
     (apply + (map (model->probability value probabilities predicate)
                   all-solutions))))
 
