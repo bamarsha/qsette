@@ -1,35 +1,33 @@
 #lang rosette
 
-(require "../interpreter.rkt"
+(require "../qsette.rkt"
          "../probability.rkt")
 
-(define (cnot-gate b)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using ([q1 (qubit)]
-                             [q2 (qubit)])
-                            (if b
-                                (x q1))
-                            (cnot q1 q2)
-                            (set r (m q2))
-                            (reset q1)
-                            (reset q2))
-                     (return r))
-                  (environment (list `(b . ,b)) (list) (list))))
-
-(define (cnot-gate-wrong b)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using ([q1 (qubit)]
-                             [q2 (qubit)])
-                            (x q1)
-                            (cnot q1 q2)
-                            (set r (m q2))
-                            (reset q1)
-                            (reset q2))
-                     (return r))
-                  (environment (list `(b . ,b)) (list) (list))))
-
+(operation (cnot-gate b)
+           (begin
+             (mutable r #f)
+             (using ([q1 (qubit)]
+                     [q2 (qubit)])
+                    (if b
+                        (x q1))
+                    (cnot q1 q2)
+                    (set r (m q2))
+                    (reset q1)
+                    (reset q2))
+             (return r)))
+                  
+(operation (cnot-gate-wrong b)
+           (begin
+             (mutable r #f)
+             (using ([q1 (qubit)]
+                     [q2 (qubit)])
+                    (x q1)
+                    (cnot q1 q2)
+                    (set r (m q2))
+                    (reset q1)
+                    (reset q2))
+             (return r)))
+                 
 (printf "Pr(cnot-gate(#f) = #f) = ~a\n" (probability/v (cnot-gate #f) #f))
 (clear-asserts!)
 (printf "Pr(cnot-gate(#t) = #t) = ~a\n" (probability/v (cnot-gate #t) #t))

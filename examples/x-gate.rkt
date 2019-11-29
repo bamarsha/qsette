@@ -1,28 +1,27 @@
 #lang rosette
 
-(require "../interpreter.rkt"
+(require "../qsette.rkt"
          "../probability.rkt")
 
-(define (x-gate b)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using ([q (qubit)])
-                            (if b
-                                (x q))
-                            (set r (m q))
-                            (reset q))
-                     (return r))
-                  (environment (list `(b . ,b)) (list) (list))))
+(operation (x-gate b)
+  (begin
+    (mutable r #f)
+    (using ([q (qubit)])
+           (if b
+               (x q))
+           (set r (m q))
+           (reset q))
+    (return r)))
+                  
 
-(define (x-gate-wrong b)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using ([q (qubit)])
-                            (x q)
-                            (set r (m q))
-                            (reset q))
-                     (return r))
-                  (environment (list `(b . ,b)) (list) (list))))
+(operation (x-gate-wrong b)
+  (begin
+    (mutable r #f)
+    (using ([q (qubit)])
+           (x q)
+           (set r (m q))
+           (reset q))
+    (return r)))
 
 (printf "Pr(x-gate(#f) = #f) = ~a\n" (probability/v (x-gate #f) #f))
 (clear-asserts!)
@@ -37,3 +36,4 @@
 
 (printf "Pr(x-gate-wrong(x) = x) = 1?\n~a\n"
         (verify (assert (= 1 (probability/v (x-gate-wrong x) x)))))
+

@@ -1,10 +1,10 @@
 #lang rosette
 
-(require "../interpreter.rkt"
+(require "../qsette.rkt"
          "../probability.rkt")
 
-(define (controlled b1 b2)
-  (interpret-stmt '(begin
+(operation (controlled b1 b2)
+  (begin
                      (mutable r #f)
                      (using ([qs (qubits 2)]
                              [p (qubit)])
@@ -16,9 +16,8 @@
                             (set r (m p))
                             (reset-all qs)
                             (reset p))
-                     (return r))
-                  (environment (list `(b1 . ,b1) `(b2 . ,b2)) (list) (list))))
-
+                     (return r)))
+                  
 (printf "Pr(controlled(#f, #t) = #t) = ~a\n"
         (probability/v (controlled #f #t) #t))
 (clear-asserts!)

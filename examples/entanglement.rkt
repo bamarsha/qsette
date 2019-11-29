@@ -1,10 +1,10 @@
 #lang rosette
 
-(require "../interpreter.rkt"
+(require "../qsette.rkt"
          "../probability.rkt")
 
-(define (entanglement b)
-  (interpret-stmt '(begin
+(operation (entanglement b)
+  (begin
                      (mutable r1 #f)
                      (mutable r2 #f)
                      (using ([q1 (qubit)]
@@ -17,11 +17,10 @@
                             (set r2 (m q2))
                             (reset q1)
                             (reset q2))
-                     (return (= r1 r2)))
-                  (environment (list `(b . ,b)) (list) (list))))
-
-(define (entanglement-wrong b)
-  (interpret-stmt '(begin
+                     (return (= r1 r2))))
+                 
+(operation (entanglement-wrong b)
+ (begin
                      (mutable r1 #f)
                      (mutable r2 #f)
                      (using ([q1 (qubit)]
@@ -34,8 +33,7 @@
                             (set r2 (m q2))
                             (reset q1)
                             (reset q2))
-                     (return (= r1 r2)))
-                  (environment (list `(b . ,b)) (list) (list))))
+                     (return (= r1 r2))))
 
 (define-symbolic x boolean?)
 (printf "Pr(entanglement(x) = !x) = 1?\n~a\n"

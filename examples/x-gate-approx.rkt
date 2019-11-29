@@ -1,34 +1,33 @@
 #lang rosette
 
-(require "../interpreter.rkt"
+(require "../qsette.rkt"
          "../probability.rkt")
 
-(define (x-gate-approx b)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using ([q (qubit)])
-                            (h q)
-                            (if b
-                                (z q))
-                            (t q)
-                            (h q)
-                            (set r (m q))
-                            (reset q))
-                     (return r))
-                  (environment (list `(b . ,b)) (list) (list))))
+(operation (x-gate-approx b)
+           (begin
+             (mutable r #f)
+             (using ([q (qubit)])
+                    (h q)
+                    (if b
+                        (z q))
+                    (t q)
+                    (h q)
+                    (set r (m q))
+                    (reset q))
+             (return r)))
+                  
 
-(define (x-gate-approx-wrong b)
-  (interpret-stmt '(begin
-                     (mutable r #f)
-                     (using ([q (qubit)])
-                            (h q)
-                            (t q)
-                            (h q)
-                            (set r (m q))
-                            (reset q))
-                     (return r))
-                  (environment (list `(b . ,b)) (list) (list))))
-
+(operation (x-gate-approx-wrong b)
+           (begin
+             (mutable r #f)
+             (using ([q (qubit)])
+                    (h q)
+                    (t q)
+                    (h q)
+                    (set r (m q))
+                    (reset q))
+             (return r)))
+                  
 (printf "Pr(x-gate-approx(#f) = #f) = ~a\n"
         (probability/v (x-gate-approx #f) #f))
 (clear-asserts!)
