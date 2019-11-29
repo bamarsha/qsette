@@ -89,6 +89,16 @@
       [`(z ,q) (apply-gate z-gate q)]
       [`(h ,q) (apply-gate h-gate q)]
       [`(t ,q) (apply-gate t-gate q)]
+      [`(cnot ,c ,t)
+       (values
+        (void)
+        (environment variables
+                     (column-vector->list
+                      (apply-controlled x-gate
+                                        `((,(dict-ref variables c) . #t))
+                                        (dict-ref variables t)
+                                        state))
+                     probabilities))]
       [`(m ,q)
        (match-let ([`(,result ,state* ,probability)
                     (measure state (dict-ref variables q))])
@@ -100,15 +110,47 @@
        (values (void) (interpret-stmt `(if (m ,q)
                                            (x ,q))
                                       env))]
+      [`(= ,expr1 ,expr2)
+       (let*-values ([(value1 env1) (interpret-expr expr1 env)]
+                     [(value2 env2) (interpret-expr expr2 env1)])
+         (values (equal? value1 value2) env2))]
       [(? boolean?) (values expr env)]
       [id (values (dict-ref variables id) env)])))
 
-(define (apply-to-qubit operator qubit state)
+(define (apply-operator operator state)
+  (matrix-multiply operator (list->column-vector state)))
+
+(define (expand-operator operator qubit size)
   (let ([operators (build-list
-                    (num-qubits state)
+                    size
                     (lambda (i) (if (= i qubit) operator identity-gate)))])
-    (matrix-multiply (foldl kronecker-product (car operators) (cdr operators))
-                     (list->column-vector state))))
+    (foldl kronecker-product (car operators) (cdr operators))))
+
+(define (control-operator operator controls target size)
+  (let* ([controls-satisfied
+          (lambda (basis)
+            (andmap
+             identity
+             (dict-map controls
+                       (lambda (qubit value)
+                         (= (if value 1 0)
+                            (bitwise-bit-field basis qubit (+ 1 qubit)))))))]
+         [expanded-op (expand-operator operator target size)]
+         [expanded-id (expand-operator identity-gate target size)])
+    (transpose (map (lambda (basis op-column id-column)
+                      (if (controls-satisfied basis)
+                          op-column
+                          id-column))
+                    (stream->list (in-range (expt 2 size)))
+                    (transpose expanded-op)
+                    (transpose expanded-id)))))
+
+(define (apply-to-qubit operator qubit state)
+  (apply-operator (expand-operator operator qubit (num-qubits state)) state))
+
+(define (apply-controlled operator controls target state)
+  (apply-operator (control-operator operator controls target (num-qubits state))
+                  state))
 
 (define (measure state qubit)
   ; The state vector is unnormalized, so remember to divide the probability by

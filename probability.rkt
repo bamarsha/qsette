@@ -25,21 +25,23 @@
         (cons solution (find-all-solutions probabilities solver solution)))))
 
 (define (negate-random-outcomes probabilities solution)
-  (andmap identity (hash-map (random-variables-only probabilities solution)
-                             (lambda (key value)
-                               (not (equal? key value))))))
+  (ormap identity (hash-map (random-variables-only probabilities solution)
+                            (lambda (key value)
+                              (not (equal? key value))))))
 
 (define ((model->probability value probabilities predicate) solution)
   (let ([rv (random-variables-only probabilities solution)])
     (if (predicate (evaluate value (sat rv)))
-        (apply * (hash-map rv (lambda (key value)
-                                ; TODO: Might need to evaluate this expression
-                                ; using a model of all the probabilities.  The
-                                ; final expression should only be in terms of
-                                ; non-random variables.
-                                (if value
-                                    (dict-ref probabilities key)
-                                    (- 1 (dict-ref probabilities key))))))
+        ; Some measurement outcomes depend on others.  To multiply dependent
+        ; events, we calculate their conditional probability by evaluating them
+        ; given the current model of measurement outcomes.
+        (evaluate
+         (apply * (hash-map rv
+                            (lambda (key value)
+                              (if value
+                                  (dict-ref probabilities key)
+                                  (- 1 (dict-ref probabilities key))))))
+         (sat rv))
         0)))
 
 (define (random-variables-only probabilities solution)
