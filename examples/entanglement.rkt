@@ -7,7 +7,8 @@
   (interpret-stmt '(begin
                      (mutable r1 #f)
                      (mutable r2 #f)
-                     (using (q1 q2)
+                     (using ([q1 (qubit)]
+                             [q2 (qubit)])
                             (h q1)
                             (cnot q1 q2)
                             (if b
@@ -23,7 +24,8 @@
   (interpret-stmt '(begin
                      (mutable r1 #f)
                      (mutable r2 #f)
-                     (using (q1 q2)
+                     (using ([q1 (qubit)]
+                             [q2 (qubit)])
                             (h q1)
                             ; (cnot q1 q2)
                             (if b

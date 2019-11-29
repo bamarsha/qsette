@@ -6,7 +6,7 @@
 (define (x-gate b)
   (interpret-stmt '(begin
                      (mutable r #f)
-                     (using (q)
+                     (using ([q (qubit)])
                             (if b
                                 (x q))
                             (set r (m q))
@@ -17,7 +17,7 @@
 (define (x-gate-wrong b)
   (interpret-stmt '(begin
                      (mutable r #f)
-                     (using (q)
+                     (using ([q (qubit)])
                             (x q)
                             (set r (m q))
                             (reset q))

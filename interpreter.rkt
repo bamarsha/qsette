@@ -61,8 +61,12 @@
                           (environment-state env*)
                           (environment-probabilities env*)))]
           [`(using (,qubits ...) ,stmts ...)
-           (remove-qubits qubits
-                          (foldl interpret-stmt (add-qubits qubits env) stmts))]
+           (let-values ([(num env*) (using-qubits qubits env)])
+             (let ([env** (foldl interpret-stmt env* stmts)])
+               ; TODO: Remove qubit variables from the environment.
+               (environment (environment-variables env**)
+                            (release-qubits num (environment-state env**))
+                            (environment-probabilities env**))))]
           [`(return ,expr)
            (let-values ([(value env*) (interpret-expr expr env)])
              `(,value ,(environment-probabilities env*)))]
@@ -169,32 +173,38 @@
 (define (num-qubits state)
   (exact-truncate (log (length state) 2)))
 
-(define (add-qubits qubits env)
-  (let* ([variables (environment-variables env)]
-         [state (environment-state env)]
-         [next-id (if (empty? state) 0 (num-qubits state))]
-         [variables* (foldl (lambda (q id vs) (dict-set vs q id))
-                            variables
-                            qubits
-                            (stream->list
-                             (stream-take (in-naturals next-id)
-                                          (length qubits))))]
+(define (allocate-qubits num state)
+  (let* ([next-id (if (empty? state) 0 (num-qubits state))]
          [state* (if (empty? state)
-                     (build-list (expt 2 (length qubits))
+                     (build-list (expt 2 num)
                                  (lambda (i)
                                    (if (= 0 i) (complex 1 0) (complex 0 0))))
                      (append state
-                             (build-list (* (length state)
-                                            (- (expt 2 (length qubits)) 1))
+                             (build-list (* (length state) (- (expt 2 num) 1))
                                          (const (complex 0 0)))))])
-    (environment variables* state* (environment-probabilities env))))
+    (values (stream->list (in-range next-id (+ num next-id))) state*)))
 
-(define (remove-qubits qubits env)
-  (let* ([variables (environment-variables env)]
-         [state (environment-state env)]
-         [variables* (foldl (lambda (q vs) (dict-remove vs q))
-                            variables
-                            qubits)]
-         [state* (take state (/ (length state) (expt 2 (length qubits))))])
-    ; TODO: Check that released qubits are all zero?
-    (environment variables* state* (environment-probabilities env))))
+(define (release-qubits num state)
+  ; TODO: Check that released qubits are all zero?
+  (if (= num (num-qubits state))
+      empty
+      (take state (/ (length state) (expt 2 num)))))
+
+(define (using-qubits initializers env)
+  (let ([update-env
+         (lambda (env name value state*)
+           (environment (dict-set (environment-variables env) name value)
+                        state*
+                        (environment-probabilities env)))])
+    (for/fold ([num 0]
+               [env* env])
+              ([initializer initializers])
+      (match initializer
+        [`[,name (qubit)]
+         (let-values ([(ids state*)
+                       (allocate-qubits 1 (environment-state env*))])
+           (values (+ 1 num) (update-env env* name (car ids) state*)))]
+        [`[,name (qubits ,size)]
+         (let-values ([(ids state*)
+                       (allocate-qubits size (environment-state env*))])
+           (values (+ size num) (update-env env* name ids state*)))]))))

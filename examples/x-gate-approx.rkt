@@ -6,7 +6,7 @@
 (define (x-gate-approx b)
   (interpret-stmt '(begin
                      (mutable r #f)
-                     (using (q)
+                     (using ([q (qubit)])
                             (h q)
                             (if b
                                 (z q))
@@ -20,7 +20,7 @@
 (define (x-gate-approx-wrong b)
   (interpret-stmt '(begin
                      (mutable r #f)
-                     (using (q)
+                     (using ([q (qubit)])
                             (h q)
                             (t q)
                             (h q)

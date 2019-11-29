@@ -6,7 +6,8 @@
 (define (cnot-gate b)
   (interpret-stmt '(begin
                      (mutable r #f)
-                     (using (q1 q2)
+                     (using ([q1 (qubit)]
+                             [q2 (qubit)])
                             (if b
                                 (x q1))
                             (cnot q1 q2)
@@ -19,7 +20,8 @@
 (define (cnot-gate-wrong b)
   (interpret-stmt '(begin
                      (mutable r #f)
-                     (using (q1 q2)
+                     (using ([q1 (qubit)]
+                             [q2 (qubit)])
                             (x q1)
                             (cnot q1 q2)
                             (set r (m q2))
