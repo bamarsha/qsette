@@ -80,45 +80,73 @@
          [probabilities (environment-probabilities env)]
          [apply-gate
           (lambda (gate qubit)
-            (values
-             (void)
-             (environment variables
-                          (column-vector->list
-                           (apply-to-qubit gate
-                                           (dict-ref variables qubit)
-                                           state))
-                          probabilities)))])
+            (let-values ([(id env*) (interpret-expr qubit env)])
+              (values
+               (void)
+               (environment (environment-variables env*)
+                            (column-vector->list
+                             (apply-to-qubit gate id (environment-state env*)))
+                            (environment-probabilities env*)))))])
     (match expr
       [`(x ,q) (apply-gate x-gate q)]
       [`(z ,q) (apply-gate z-gate q)]
       [`(h ,q) (apply-gate h-gate q)]
       [`(t ,q) (apply-gate t-gate q)]
-      [`(cnot ,c ,t)
+      [`(cnot ,controls ,target)
        (values
         (void)
         (environment variables
                      (column-vector->list
                       (apply-controlled x-gate
-                                        `((,(dict-ref variables c) . #t))
-                                        (dict-ref variables t)
+                                        `((,(dict-ref variables controls) . #t))
+                                        (dict-ref variables target)
                                         state))
                      probabilities))]
+      [`(controlled ,operator ,controls ,target)
+       (let-values ([(gate) (match operator
+                              ['x x-gate]
+                              ['z z-gate]
+                              ['h h-gate]
+                              ['t t-gate])]
+                    [(control-ids env*) (interpret-expr controls env)]
+                    [(target-id env**) (interpret-expr target env)])
+         (values
+          (void)
+          (environment (environment-variables env**)
+                       (column-vector->list
+                        (apply-controlled gate
+                                          (map (lambda (id) `(,id . #t))
+                                               control-ids)
+                                          target-id
+                                          (environment-state env**)))
+                       (environment-probabilities env**))))]
       [`(m ,q)
-       (match-let ([`(,result ,state* ,probability)
-                    (measure state (dict-ref variables q))])
-         (values result
-                 (environment variables
-                              state*
-                              (dict-set probabilities result probability))))]
+       (let-values ([(id env*) (interpret-expr q env)])
+         (match-let ([`(,result ,state* ,probability)
+                      (measure (environment-state env*) id)])
+           (values result
+                   (environment (environment-variables env*)
+                                state*
+                                (dict-set (environment-probabilities env*)
+                                          result probability)))))]
       [`(reset ,q)
        (values (void) (interpret-stmt `(if (m ,q)
                                            (x ,q))
                                       env))]
+      [`(reset-all ,qs)
+       (let-values ([(ids env*) (interpret-expr qs env)])
+         (values (void)
+                 (foldl interpret-stmt env*
+                        (map (lambda (q) `(reset ,q)) ids))))]
       [`(= ,expr1 ,expr2)
        (let*-values ([(value1 env1) (interpret-expr expr1 env)]
                      [(value2 env2) (interpret-expr expr2 env1)])
          (values (equal? value1 value2) env2))]
+      [`(index ,expr ,i)
+       (let-values ([(value env*) (interpret-expr expr env)])
+         (values (list-ref value i) env*))]
       [(? boolean?) (values expr env)]
+      [(? integer?) (values expr env)]
       [id (values (dict-ref variables id) env)])))
 
 (define (apply-operator operator state)
