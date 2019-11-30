@@ -5,35 +5,35 @@
 
 (operation (entanglement b)
   (begin
-                     (mutable r1 #f)
-                     (mutable r2 #f)
-                     (using ([q1 (qubit)]
-                             [q2 (qubit)])
-                            (h q1)
-                            (cnot q1 q2)
-                            (if b
-                                (x q1))
-                            (set r1 (m q1))
-                            (set r2 (m q2))
-                            (reset q1)
-                            (reset q2))
-                     (return (= r1 r2))))
+    (mutable r1 #f)
+    (mutable r2 #f)
+    (using ([q1 (qubit)]
+            [q2 (qubit)])
+           (h q1)
+           (cnot q1 q2)
+           (if b
+               (x q1))
+           (set r1 (m q1))
+           (set r2 (m q2))
+           (reset q1)
+           (reset q2))
+    (return (= r1 r2))))
                  
 (operation (entanglement-wrong b)
  (begin
-                     (mutable r1 #f)
-                     (mutable r2 #f)
-                     (using ([q1 (qubit)]
-                             [q2 (qubit)])
-                            (h q1)
-                            ; (cnot q1 q2)
-                            (if b
-                                (x q1))
-                            (set r1 (m q1))
-                            (set r2 (m q2))
-                            (reset q1)
-                            (reset q2))
-                     (return (= r1 r2))))
+   (mutable r1 #f)
+   (mutable r2 #f)
+   (using ([q1 (qubit)]
+           [q2 (qubit)])
+          (h q1)
+          ; (cnot q1 q2)
+          (if b
+              (x q1))
+          (set r1 (m q1))
+          (set r2 (m q2))
+          (reset q1)
+          (reset q2))
+   (return (= r1 r2))))
 
 (define-symbolic x boolean?)
 (printf "Pr(entanglement(x) = !x) = 1?\n~a\n"

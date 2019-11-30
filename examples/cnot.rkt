@@ -4,29 +4,29 @@
          "../probability.rkt")
 
 (operation (cnot-gate b)
-           (begin
-             (mutable r #f)
-             (using ([q1 (qubit)]
-                     [q2 (qubit)])
-                    (if b
-                        (x q1))
-                    (cnot q1 q2)
-                    (set r (m q2))
-                    (reset q1)
-                    (reset q2))
-             (return r)))
-                  
+  (begin
+    (mutable r #f)
+    (using ([q1 (qubit)]
+            [q2 (qubit)])
+           (if b
+               (x q1))
+           (cnot q1 q2)
+           (set r (m q2))
+           (reset q1)
+           (reset q2))
+    (return r)))
+
 (operation (cnot-gate-wrong b)
-           (begin
-             (mutable r #f)
-             (using ([q1 (qubit)]
-                     [q2 (qubit)])
-                    (x q1)
-                    (cnot q1 q2)
-                    (set r (m q2))
-                    (reset q1)
-                    (reset q2))
-             (return r)))
+  (begin
+    (mutable r #f)
+    (using ([q1 (qubit)]
+            [q2 (qubit)])
+           (x q1)
+           (cnot q1 q2)
+           (set r (m q2))
+           (reset q1)
+           (reset q2))
+    (return r)))
                  
 (printf "Pr(cnot-gate(#f) = #f) = ~a\n" (probability/v (cnot-gate #f) #f))
 (clear-asserts!)
