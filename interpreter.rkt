@@ -124,6 +124,11 @@
                (environment variables*
                             state**
                             (dict-set probabilities* result probability))))]
+    [`(measure-integer ,qs)
+     (let*-values ([(ids env*) (interpret-expr qs env)]
+                   [(results env**) (sequence-exprs
+                                     (map (lambda (id) `(m ,id)) ids) env*)])
+       (values (booleans->bitvector results) env**))]
     [`(reset ,q)
      (values (void) (interpret-stmt `(if (m ,q) (x ,q)) env))]
     [`(reset-all ,qs)
@@ -139,6 +144,10 @@
     [`(index ,expr ,i)
      (let-values ([(value env*) (interpret-expr expr env)])
        (values (list-ref value i) env*))]
+    [`(int-as-bool-array ,n ,bits)
+     (match-let-values ([((list n-val bits-val) env*)
+                         (sequence-exprs (list n bits) env)])
+       (values (bitvector->booleans n-val bits-val) env*))]
     [(? boolean?) (values expr env)]
     [(? integer?) (values expr env)]
     [id (values (dict-ref (environment-variables env) id) env)]))
@@ -226,3 +235,23 @@
         [`[,name (qubits ,size)]
          (let-values ([(ids state*) (allocate-qubits size state*)])
            (values (+ size num) (update-env env* name ids state*)))]))))
+
+(define (sequence-exprs exprs env)
+  (let-values ([(vals env*) (for/fold ([vals empty]
+                                       [env* env])
+                                      ([expr exprs])
+                              (let-values ([(value env**)
+                                            (interpret-expr expr env*)])
+                                (values (cons value vals) env**)))])
+    (values (reverse vals) env*)))
+
+(define (booleans->bitvector bools)
+  (apply bvadd (map (lambda (index bool)
+                      (if bool
+                          (bv (arithmetic-shift 1 index) (length bools))
+                          (bv 0 (length bools))))
+                    (stream->list (in-range 0 (length bools)))
+                    bools)))
+
+(define (bitvector->booleans n bits)
+  (build-list bits (lambda (i) (bveq (bv 1 1) (extract i i n)))))
