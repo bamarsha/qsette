@@ -4,6 +4,7 @@
          "matrix.rkt")
 
 (provide environment
+         environment-probabilities
          interpret-stmt
          interpret-expr)
 
@@ -38,39 +39,55 @@
     (,(complex 0 0) ,(complex 1 0))))
 
 (define (interpret-stmt stmt env)
-  (if (not (environment? env))
-      ; env is some return value instead, so just return it again.
-      env
-      ; env is actually an environment.
-      (match stmt
-        [`(begin ,stmts ...) (foldl interpret-stmt env stmts)]
-        [`(if ,expr ,stmt1 ,stmt2)
-         (let-values ([(value env*) (interpret-expr expr env)])
-           (if value
-               (interpret-stmt stmt1 env*)
-               (interpret-stmt stmt2 env*)))]
-        [`(if ,expr ,stmt1)
-         (interpret-stmt `(if ,expr ,stmt1 (begin)) env)]
-        [`(mutable ,id ,expr)
-         (interpret-stmt `(set ,id ,expr) env)]
-        [`(set ,id ,expr)
-         (let*-values ([(value env*) (interpret-expr expr env)]
-                       [(variables*) (environment-variables env*)])
-           (struct-copy environment env*
-                        [variables (dict-set variables* id value)]))]
-        [`(using (,qubits ...) ,stmts ...)
-         (let*-values ([(num env*) (using-qubits qubits env)]
-                       [(env**) (foldl interpret-stmt env* stmts)]
-                       [(state**) (environment-state env**)])
-           ; TODO: Remove qubit variables from the environment.
-           (struct-copy environment env**
-                        [state (release-qubits num state**)]))]
-        [`(return ,expr)
-         (let-values ([(value env*) (interpret-expr expr env)])
-           `(,value ,(environment-probabilities env*)))]
-        [expr
-         (let-values ([(value env*) (interpret-expr expr env)])
-           env*)])))
+  (match stmt
+    [`(begin ,stmts ...)
+     (foldl
+      (lambda (stmt ret-env*)
+        (match-let ([(cons ret env*) ret-env*])
+          (if ret
+              ret-env*
+              (interpret-stmt stmt env*)))) (cons #f env) stmts)]
+    [`(if ,expr ,stmt1 ,stmt2)
+     (match-let* ([(cons value env*) (interpret-expr expr env)]
+                  [(cons ret env**) (if value
+                                        (interpret-stmt stmt1 env*)
+                                        (interpret-stmt stmt2 env*))]
+                  [variables* (environment-variables env**)]
+                  [new-vars (- (length variables*) (length (environment-variables env)))])
+       (cons ret
+             (struct-copy environment env**
+                          (variables (drop variables* new-vars)))))]
+    [`(if ,expr ,stmt1)
+     (interpret-stmt `(if ,expr ,stmt1 (begin)) env)]
+    [`(mutable ,id ,expr)
+     ; Because we have "mutable" and "set" statements, we can shadow previous ids.
+     ; New ids are added to the beginning of the list, only the most recently defined is used.
+     (let*-values ([(value env*) (interpret-expr expr env)]
+                   [(variables*) (environment-variables env*)])
+       (cons #f
+             (struct-copy environment env*
+                          (variables (cons (cons id value) variables*)))))]
+    [`(set ,id ,expr)
+     (let*-values ([(value env*) (interpret-expr expr env)]
+                   [(variables*) (environment-variables env*)])
+       (cons #f
+             (struct-copy environment env*
+                          [variables (dict-set variables* id value)])))]
+    [`(using (,qubits ...) ,stmts ...)
+     (let-values ([(num env*) (using-qubits qubits env)])
+       (match-let*
+           ([(cons ret env**) (foldl interpret-stmt env* stmts)]
+            [state** (environment-state env**)])
+         ; TODO: Remove qubit variables from the environment.
+         (cons ret
+               (struct-copy environment env**
+                            [state (release-qubits num state**)]))))]
+    [`(return ,expr)
+     (let-values ([(value env*) (interpret-expr expr env)])
+       (cons value env*))]
+    [expr
+     (let-values ([(value env*) (interpret-expr expr env)])
+       (cons #f env*))]))
 
 (define (interpret-expr expr env)
   (define (apply-gate gate qubit)
@@ -117,13 +134,13 @@
                                                state**))])))]
     [`(m ,q)
      (match-let*-values
-         ([(id (environment variables* state* probabilities*))
-           (interpret-expr q env)]
-          [(`(,result ,state** ,probability)) (measure state* id)])
-       (values result
-               (environment variables*
-                            state**
-                            (dict-set probabilities* result probability))))]
+      ([(id (environment variables* state* probabilities*))
+        (interpret-expr q env)]
+       [(`(,result ,state** ,probability)) (measure state* id)])
+      (values result
+              (environment variables*
+                           state**
+                           (dict-set probabilities* result probability))))]
     [`(measure-integer ,qs)
      (let*-values ([(ids env*) (interpret-expr qs env)]
                    [(results env**) (sequence-exprs
@@ -147,7 +164,8 @@
     [`(int-as-bool-array ,n ,bits)
      (match-let-values ([((list n-val bits-val) env*)
                          (sequence-exprs (list n bits) env)])
-       (values (bitvector->booleans n-val bits-val) env*))]
+                       (values (bitvector->booleans n-val bits-val) env*))]
+    [`(,id ,exprs ...) (printf "Calling ~a with ~a\n" id exprs)]
     [(? boolean?) (values expr env)]
     [(? integer?) (values expr env)]
     [id (values (dict-ref (environment-variables env) id) env)]))

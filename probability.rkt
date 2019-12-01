@@ -3,10 +3,13 @@
 (provide probability/p
          probability/v)
 
+(require "interpreter.rkt")
+
 (define (probability/p result predicate)
-  (match-let* ([`(,value ,probabilities) result]
+  (match-let* ([`(,value ,env) result]
                [solver (solve+)]
                [first-solution (solver (predicate value))]
+               [probabilities (environment-probabilities env)]
                [all-solutions (cons first-solution
                                     (find-all-solutions probabilities
                                                         solver
