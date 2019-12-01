@@ -6,7 +6,7 @@
 (require "interpreter.rkt")
 
 (define (probability/p result predicate)
-  (match-let* ([`(,value ,env) result]
+  (match-let* ([(cons value env) result]
                [solver (solve+)]
                [first-solution (solver (predicate value))]
                [probabilities (environment-probabilities env)]

@@ -5,6 +5,7 @@
 
 (provide environment
          environment-probabilities
+         environment-variables
          interpret-stmt
          interpret-expr)
 
@@ -38,25 +39,30 @@
   `((,(complex 0 0) ,(complex 0 0))
     (,(complex 0 0) ,(complex 1 0))))
 
+; Returns a new environment with variables created between env and env* removed
+(define (drop-scope env env*)
+  (let* ([variables* (environment-variables env*)]
+         [new-count (- (length variables*) (length (environment-variables env)))])
+    (struct-copy environment env* (variables (drop variables* new-count)))))
+
 (define (interpret-stmt stmt env)
   (match stmt
     [`(begin ,stmts ...)
      (foldl
       (lambda (stmt ret-env*)
-        (match-let ([(cons ret env*) ret-env*])
-          (if ret
-              ret-env*
-              (interpret-stmt stmt env*)))) (cons #f env) stmts)]
+        (match ret-env*
+          [(cons ret env*) ret-env*]
+          [env* (interpret-stmt stmt env*)]))
+      env
+      stmts)]
     [`(if ,expr ,stmt1 ,stmt2)
-     (match-let* ([(cons value env*) (interpret-expr expr env)]
-                  [(cons ret env**) (if value
-                                        (interpret-stmt stmt1 env*)
-                                        (interpret-stmt stmt2 env*))]
-                  [variables* (environment-variables env**)]
-                  [new-vars (- (length variables*) (length (environment-variables env)))])
-       (cons ret
-             (struct-copy environment env**
-                          (variables (drop variables* new-vars)))))]
+     (let*-values ([(value env*) (interpret-expr expr env)]
+                   [(ret-env**) (if value
+                                    (interpret-stmt stmt1 env*)
+                                    (interpret-stmt stmt2 env*))])
+       (match ret-env**
+         [(cons ret env**) (cons ret (drop-scope env env**))]
+         [env** (drop-scope env env**)]))]
     [`(if ,expr ,stmt1)
      (interpret-stmt `(if ,expr ,stmt1 (begin)) env)]
     [`(mutable ,id ,expr)
@@ -64,30 +70,29 @@
      ; New ids are added to the beginning of the list, only the most recently defined is used.
      (let*-values ([(value env*) (interpret-expr expr env)]
                    [(variables*) (environment-variables env*)])
-       (cons #f
-             (struct-copy environment env*
-                          (variables (cons (cons id value) variables*)))))]
+       (struct-copy environment env*
+                    (variables (cons (cons id value) variables*))))]
     [`(set ,id ,expr)
      (let*-values ([(value env*) (interpret-expr expr env)]
                    [(variables*) (environment-variables env*)])
-       (cons #f
-             (struct-copy environment env*
-                          [variables (dict-set variables* id value)])))]
+       (struct-copy environment env*
+                    [variables (dict-set variables* id value)]))]
+    ; TODO: Should "using" have lexical scope, currently behaves like a begin, no scoping
     [`(using (,qubits ...) ,stmts ...)
-     (let-values ([(num env*) (using-qubits qubits env)])
-       (match-let*
-           ([(cons ret env**) (foldl interpret-stmt env* stmts)]
-            [state** (environment-state env**)])
-         ; TODO: Remove qubit variables from the environment.
-         (cons ret
-               (struct-copy environment env**
-                            [state (release-qubits num state**)]))))]
+     (let*-values ([(num env*) (using-qubits qubits env)]
+                   ; TODO: Is it an error to return from inside a using block?
+                   ; If not then we need to add a check here for cons.
+                   [(env**) (interpret-stmt `(begin ,@stmts) env*)]
+                   [(state**) (environment-state env**)])
+       ; TODO: Remove qubit variables from the environment.
+       (struct-copy environment env**
+                    [state (release-qubits num state**)]))]
     [`(return ,expr)
      (let-values ([(value env*) (interpret-expr expr env)])
        (cons value env*))]
     [expr
      (let-values ([(value env*) (interpret-expr expr env)])
-       (cons #f env*))]))
+       env*)]))
 
 (define (interpret-expr expr env)
   (define (apply-gate gate qubit)
