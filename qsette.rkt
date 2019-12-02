@@ -9,10 +9,10 @@
   #:property prop:procedure
   (struct-field-index proc))
 
-(define (interpret prog inputs)
+(define (interpret prog inputs state)
   (match-define `(operation (,_ ,args ...) ,S) prog)
   ; TODO: This is a default void return if no return statement is provided
-  (match (interpret-stmt S (environment (map cons args inputs) (list) (list)))
+  (match (interpret-stmt S (environment (map cons args inputs) state (list)))
     [(cons ret env) (cons ret env)]
     [env (cons (void) env)]))
   
@@ -23,5 +23,5 @@
      (syntax/loc stx
        (define id
          (let* ([ast `(operation (id args ...) stmt)]
-                [id (lambda (args ...) (interpret ast (list args ...)))])
+                [id (lambda (args ... (state (list))) (interpret ast (list args ...) state))])
            (qsette ast id))))]))

@@ -170,7 +170,18 @@
      (match-let-values ([((list n-val bits-val) env*)
                          (sequence-exprs (list n bits) env)])
                        (values (bitvector->booleans n-val bits-val) env*))]
-    [`(,id ,exprs ...) (printf "Calling ~a with ~a\n" id exprs)]
+    [`(,id ,exprs ...)
+     (match-let* ([args (foldl
+                         (lambda (expr vals-env*)
+                           (match vals-env*
+                             [(cons vals env*)
+                              (let-values ([(val env**) (interpret-expr expr env*)])
+                                (cons (cons val vals) env**))]))
+                         (cons (list) env)
+                         exprs)]
+                  [(cons vals (environment _ state* _)) args]
+                  [(cons ret (environment _ state** _)) (apply id (append (reverse vals) (list state*)))])
+       (values ret (struct-copy environment env (state state**))))]
     [(? boolean?) (values expr env)]
     [(? integer?) (values expr env)]
     [id (values (dict-ref (environment-variables env) id) env)]))
