@@ -1,6 +1,6 @@
 #lang rosette
 
-(require "qsette.rkt")
+(require "../qsette.rkt")
 
 (operation (scope-test)
            (begin
