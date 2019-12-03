@@ -126,23 +126,32 @@
                                                       target-id
                                                       state**))])))]
     [`(controlled ,operator ,controls ,target)
-     (let*-values ([(gate) (match operator
+     (let-values ([(control-ids env*) (interpret-expr controls env)])
+       (interpret-expr `(controlled-on-bit-string
+                         ,operator
+                         ,(build-list (length control-ids) (const #t))
+                         ,control-ids
+                         ,target)
+                       env*))]
+    [`(controlled-on-bit-string ,operator ,bits ,controls ,target)
+     (match-let*-values ([(gate) (match operator
                              ['x x-gate]
                              ['z z-gate]
                              ['h h-gate]
                              ['t t-gate])]
-                   [(control-ids env*) (interpret-expr controls env)]
-                   [(target-id env**) (interpret-expr target env*)]
-                   [(state**) (environment-state env**)])
+                         [((list bit-values control-ids target-id) env*)
+                          (sequence-exprs (list bits controls target) env)]
+                         [(state*) (environment-state env*)])
        (values
         (void)
-        (struct-copy environment env**
+        (struct-copy environment env*
                      [state (column-vector->list
                              (apply-controlled gate
-                                               (map (lambda (id) `(,id . #t))
-                                                    control-ids)
+                                               (map (lambda (bit id)
+                                                      `(,id . ,bit))
+                                                    bit-values control-ids)
                                                target-id
-                                               state**))])))]
+                                               state*))])))]
     [`(m ,q)
      (match-let*-values
       ([(id (environment variables* state* probabilities*))
@@ -175,8 +184,9 @@
     [`(int-as-bool-array ,n ,bits)
      (match-let-values ([((list n-val bits-val) env*)
                          (sequence-exprs (list n bits) env)])
-                       (values (bitvector->booleans n-val bits-val) env*))]
+       (values (bitvector->booleans n-val bits-val) env*))]
     [`(,id ,exprs ...)
+     #:when (procedure? id)
      (match-let* ([args (foldl
                          (lambda (expr vals-env*)
                            (match vals-env*
@@ -191,6 +201,7 @@
     [(? boolean?) (values expr env)]
     [(? integer?) (values expr env)]
     [(? bv?) (values expr env)]
+    [(? list?) (values expr env)]
     [id (values (dict-ref (environment-variables env) id) env)]))
 
 (define (apply-operator operator state)
