@@ -24,22 +24,17 @@
 
 (operation (reflect-uniform qs)
   (begin
-    (for (i ,num-qubits)
-      (begin
-        (h (index qs i))
-        (x (index qs i))))
+    (apply-to-each h qs)
+    (apply-to-each x qs)
     (controlled z (drop qs 1) (index qs 0))
-    (for (i ,num-qubits)
-      (begin
-        (x (index qs i))
-        (h (index qs i))))))
+    (apply-to-each x qs)
+    (apply-to-each h qs)))
 
 (operation (grover-search target)
   (begin
     (mutable result #f)
     (using ([qs (qubits ,num-qubits)])
-      (for (i ,num-qubits)
-        (h (index qs i)))
+      (apply-to-each h qs)
       (for (i ,num-iterations)
         (begin
           (,reflect-target qs target)
@@ -53,6 +48,5 @@
 (clear-asserts!)
 
 (define-symbolic n (bitvector num-qubits))
-(verify (assert (<= 0.5 (probability/v (grover-search n) n))))
-(verify (assert (<= 0.7 (probability/v (grover-search n) n))))
 (verify (assert (<= 0.8 (probability/v (grover-search n) n))))
+(verify (assert (= 1 (probability/v (grover-search n) n))))
