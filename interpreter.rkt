@@ -177,6 +177,7 @@
                          (sequence-exprs (list n bits) env)])
                        (values (bitvector->booleans n-val bits-val) env*))]
     [`(,id ,exprs ...)
+     #:when (procedure? id)
      (match-let*-values
       ([(args env*)
         (sequence-exprs exprs env)]
