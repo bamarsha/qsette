@@ -20,7 +20,7 @@
     (,(complex 1 0) ,(complex 0 0))))
 
 (define z-gate
-  `((,(complex 1 0) ,(complex 1 0))
+  `((,(complex 1 0) ,(complex 0 0))
     (,(complex 0 0) ,(complex -1 0))))
 
 (define h-gate
