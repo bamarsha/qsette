@@ -96,6 +96,9 @@
         [`(return ,expr)
          (let-values ([(value env*) (interpret-expr expr env)])
            (cons value env*))]
+        [`(print-env)
+         (pretty-print env)
+         env]
         [expr
          (let-values ([(value env*) (interpret-expr expr env)])
            env*)])))
