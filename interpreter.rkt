@@ -180,7 +180,11 @@
        (values (equal? value1 value2) env2))]
     [`(index ,expr ,i)
      (match-let-values ([((list value i) env*) (sequence-exprs (list expr i) env)])
-                       (values (list-ref value i) env*))]
+       (values (list-ref value i) env*))]
+    [`(drop ,lst ,pos)
+     (match-let-values ([((list lst-value pos-value) env*)
+                         (sequence-exprs (list lst pos) env)])
+       (values (drop lst-value pos-value) env*))]
     [`(int-as-bool-array ,n ,bits)
      (match-let-values ([((list n-val bits-val) env*)
                          (sequence-exprs (list n bits) env)])
