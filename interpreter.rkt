@@ -129,7 +129,10 @@
                                                       target-id
                                                       state**))])))]
     [`(controlled ,operator ,controls ,target)
-     (let-values ([(control-ids env*) (interpret-expr controls env)])
+     (let*-values ([(controls-val env*) (interpret-expr controls env)]
+                   [(control-ids) (if (list? controls-val)
+                                      controls-val
+                                      (list controls-val))])
        (interpret-expr `(controlled-on-bit-string
                          ,operator
                          ,(build-list (length control-ids) (const #t))
