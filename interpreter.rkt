@@ -20,7 +20,7 @@
     (,(complex 1 0) ,(complex 0 0))))
 
 (define z-gate
-  `((,(complex 1 0) ,(complex 1 0))
+  `((,(complex 1 0) ,(complex 0 0))
     (,(complex 0 0) ,(complex -1 0))))
 
 (define h-gate
@@ -96,18 +96,25 @@
         [`(return ,expr)
          (let-values ([(value env*) (interpret-expr expr env)])
            (cons value env*))]
+        [`(print-env)
+         (pretty-print env)
+         env]
         [expr
          (let-values ([(value env*) (interpret-expr expr env)])
            env*)])))
 
 (define (interpret-expr expr env)
   (define (apply-gate gate qubit)
-    (let*-values ([(id env*) (interpret-expr qubit env)]
+    (let-values ([(id env*) (interpret-expr qubit env)])
+      (apply-to-each gate (list id))))
+
+  (define (apply-to-each gate qubits)
+    (let*-values ([(ids env*) (interpret-expr qubits env)]
                   [(state*) (environment-state env*)])
       (values (void)
               (struct-copy environment env*
                            [state (column-vector->list
-                                   (apply-to-qubit gate id state*))]))))
+                                   (apply-to-qubits gate ids state*))]))))
 
   (match expr
     [`(x ,q) (apply-gate x-gate q)]
@@ -125,24 +132,43 @@
                                                       `((,control-id . #t))
                                                       target-id
                                                       state**))])))]
+    [`(apply-to-each ,operator ,qubits)
+     (let* ([gate (match operator
+                    ['x x-gate]
+                    ['z z-gate]
+                    ['h h-gate]
+                    ['t t-gate])])
+       (apply-to-each gate qubits))]
     [`(controlled ,operator ,controls ,target)
-     (let*-values ([(gate) (match operator
-                             ['x x-gate]
-                             ['z z-gate]
-                             ['h h-gate]
-                             ['t t-gate])]
-                   [(control-ids env*) (interpret-expr controls env)]
-                   [(target-id env**) (interpret-expr target env*)]
-                   [(state**) (environment-state env**)])
+     (let*-values ([(controls-val env*) (interpret-expr controls env)]
+                   [(control-ids) (if (list? controls-val)
+                                      controls-val
+                                      (list controls-val))])
+       (interpret-expr `(controlled-on-bit-string
+                         ,operator
+                         ,(build-list (length control-ids) (const #t))
+                         ,control-ids
+                         ,target)
+                       env*))]
+    [`(controlled-on-bit-string ,operator ,bits ,controls ,target)
+     (match-let*-values ([(gate) (match operator
+                                   ['x x-gate]
+                                   ['z z-gate]
+                                   ['h h-gate]
+                                   ['t t-gate])]
+                         [((list bit-values control-ids target-id) env*)
+                          (sequence-exprs (list bits controls target) env)]
+                         [(state*) (environment-state env*)])
        (values
         (void)
-        (struct-copy environment env**
+        (struct-copy environment env*
                      [state (column-vector->list
                              (apply-controlled gate
-                                               (map (lambda (id) `(,id . #t))
-                                                    control-ids)
+                                               (map (lambda (bit id)
+                                                      `(,id . ,bit))
+                                                    bit-values control-ids)
                                                target-id
-                                               state**))])))]
+                                               state*))])))]
     [`(m ,q)
      (match-let*-values
       ([(id (environment variables* state* probabilities*))
@@ -171,11 +197,15 @@
        (values (equal? value1 value2) env2))]
     [`(index ,expr ,i)
      (match-let-values ([((list value i) env*) (sequence-exprs (list expr i) env)])
-                       (values (list-ref value i) env*))]
+       (values (list-ref value i) env*))]
+    [`(drop ,lst ,pos)
+     (match-let-values ([((list lst-value pos-value) env*)
+                         (sequence-exprs (list lst pos) env)])
+       (values (drop lst-value pos-value) env*))]
     [`(int-as-bool-array ,n ,bits)
      (match-let-values ([((list n-val bits-val) env*)
                          (sequence-exprs (list n bits) env)])
-                       (values (bitvector->booleans n-val bits-val) env*))]
+       (values (bitvector->booleans n-val bits-val) env*))]
     [`(,id ,exprs ...)
      #:when (procedure? id)
      (match-let*-values
@@ -190,15 +220,18 @@
     [(? boolean?) (values expr env)]
     [(? integer?) (values expr env)]
     [(? bv?) (values expr env)]
+    [(? list?) (values expr env)]
     [id (values (dict-ref (environment-variables env) id) env)]))
 
 (define (apply-operator operator state)
   (matrix-multiply operator (list->column-vector state)))
 
-(define (expand-operator operator qubit size)
+(define (expand-operator operator qubits size)
   (let ([operators (build-list size
                                (lambda (i)
-                                 (if (= i qubit) operator identity-gate)))])
+                                 (if (member i qubits)
+                                     operator
+                                     identity-gate)))])
     (foldl kronecker-product (car operators) (cdr operators))))
 
 (define (control-operator operator controls target size)
@@ -209,8 +242,8 @@
                         (= (if value 1 0)
                            (bitwise-bit-field basis qubit (+ 1 qubit)))))))
 
-  (let ([expanded-op (expand-operator operator target size)]
-        [expanded-id (expand-operator identity-gate target size)])
+  (let ([expanded-op (expand-operator operator (list target) size)]
+        [expanded-id (expand-operator identity-gate (list target) size)])
     (transpose (map (lambda (basis op-column id-column)
                       (if (controls-satisfied basis) op-column id-column))
                     (stream->list (in-range (expt 2 size)))
@@ -218,7 +251,10 @@
                     (transpose expanded-id)))))
 
 (define (apply-to-qubit operator qubit state)
-  (apply-operator (expand-operator operator qubit (num-qubits state)) state))
+  (apply-to-qubits operator (list qubit) state))
+
+(define (apply-to-qubits operator qubits state)
+  (apply-operator (expand-operator operator qubits (num-qubits state)) state))
 
 (define (apply-controlled operator controls target state)
   (apply-operator (control-operator operator controls target (num-qubits state))
