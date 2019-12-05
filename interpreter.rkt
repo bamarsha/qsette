@@ -87,12 +87,12 @@
            ; TODO: Remove qubit variables from the environment.
            (struct-copy environment env**
                         [state (release-qubits num state**)]))]
-        [`(for (,id ,expr) ,S)
-         (let*-values ([(value env*) (interpret-expr expr env)])
+        [`(for (,id ,exprs ...) ,S)
+         (let*-values ([(values env*) (sequence-exprs exprs env)])
            (foldl (lambda (i env**)
                     (interpret-stmt-scoped `(begin (mutable ,id ,i) ,S) env**))
                   env*
-                  (stream->list (in-range value))))]
+                  (stream->list (apply in-range values))))]
         [`(return ,expr)
          (let-values ([(value env*) (interpret-expr expr env)])
            (cons value env*))]
@@ -204,17 +204,15 @@
        (values (drop lst-value pos-value) env*))]
     [`(,id ,exprs ...)
      #:when (procedure? id)
-     (match-let* ([args (foldl
-                         (lambda (expr vals-env*)
-                           (match vals-env*
-                             [(cons vals env*)
-                              (let-values ([(val env**) (interpret-expr expr env*)])
-                                (cons (cons val vals) env**))]))
-                         (cons (list) env)
-                         exprs)]
-                  [(cons vals (environment _ state* _)) args]
-                  [(cons ret (environment _ state** _)) (apply id (append (reverse vals) (list state*)))])
-       (values ret (struct-copy environment env (state state**))))]
+     (match-let*-values
+      ([(args env*)
+        (sequence-exprs exprs env)]
+       [((cons ret (environment _ state* probabilities*)))
+        (apply id (append args (list env*)))])
+      (values ret
+              (struct-copy environment env
+                           (state state*)
+                           (probabilities probabilities*))))]
     [(? boolean?) (values expr env)]
     [(? integer?) (values expr env)]
     [(? bv?) (values expr env)]

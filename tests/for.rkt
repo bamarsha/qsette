@@ -15,7 +15,7 @@
            (begin
              (mutable r #f)
              (mutable bs (int-as-bool-array ,(bv 4 3) 3))
-             (for (i 3)
+             (for (i 1 2)
                (set r (index bs i)))
              (return r)))
 
