@@ -146,7 +146,8 @@
                                       (list controls-val))])
        (interpret-expr `(controlled-on-bit-string
                          ,operator
-                         ,(build-list (length control-ids) (const #t))
+                         ,(bv (- (expt 2 (length control-ids)) 1)
+                              (length control-ids))
                          ,control-ids
                          ,target)
                        env*))]
@@ -164,9 +165,8 @@
         (struct-copy environment env*
                      [state (column-vector->list
                              (apply-controlled gate
-                                               (map (lambda (bit id)
-                                                      `(,id . ,bit))
-                                                    bit-values control-ids)
+                                               control-ids
+                                               bit-values
                                                target-id
                                                state*))])))]
     [`(m ,q)
@@ -202,10 +202,6 @@
      (match-let-values ([((list lst-value pos-value) env*)
                          (sequence-exprs (list lst pos) env)])
        (values (drop lst-value pos-value) env*))]
-    [`(int-as-bool-array ,n ,bits)
-     (match-let-values ([((list n-val bits-val) env*)
-                         (sequence-exprs (list n bits) env)])
-       (values (bitvector->booleans n-val bits-val) env*))]
     [`(,id ,exprs ...)
      #:when (procedure? id)
      (match-let* ([args (foldl
@@ -236,13 +232,17 @@
                                      identity-gate)))])
     (foldl kronecker-product (car operators) (cdr operators))))
 
-(define (control-operator operator controls target size)
+(define (control-operator operator controls bits target size)
   (define (controls-satisfied basis)
-    (andmap identity
-            (dict-map controls
-                      (lambda (qubit value)
-                        (= (if value 1 0)
-                           (bitwise-bit-field basis qubit (+ 1 qubit)))))))
+    (bveq bits
+          (apply bvadd
+                 (map (lambda (index qubit)
+                        (bv (arithmetic-shift
+                             (bitwise-bit-field basis qubit (+ 1 qubit))
+                             index)
+                            (length controls)))
+                      (stream->list (in-range (length controls)))
+                      controls))))
 
   (let ([expanded-op (expand-operator operator (list target) size)]
         [expanded-id (expand-operator identity-gate (list target) size)])
@@ -258,9 +258,10 @@
 (define (apply-to-qubits operator qubits state)
   (apply-operator (expand-operator operator qubits (num-qubits state)) state))
 
-(define (apply-controlled operator controls target state)
-  (apply-operator (control-operator operator controls target (num-qubits state))
-                  state))
+(define (apply-controlled operator controls bits target state)
+  (apply-operator
+   (control-operator operator controls bits target (num-qubits state))
+   state))
 
 (define (measure state qubit)
   ; The state vector is unnormalized, so remember to divide the probability by
@@ -330,6 +331,3 @@
                           (bv 0 (length bools))))
                     (stream->list (in-range 0 (length bools)))
                     bools)))
-
-(define (bitvector->booleans n bits)
-  (build-list bits (lambda (i) (bveq (bv 1 1) (extract i i n)))))
