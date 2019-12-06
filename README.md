@@ -93,4 +93,4 @@ Extract from `examples/entanglement.rkt`
     (return (= r1 r2))))
 ```
 
-To see how the examples are tested, see the full example files.
+To see how the examples are tested, see the full files in the example folder.

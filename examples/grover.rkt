@@ -19,7 +19,7 @@
 (operation (reflect-target qs target)
   (using ([p (qubit)])
     (x p)
-    (controlled-on-bit-string z (int-as-bool-array target ,num-qubits) qs p)
+    (controlled-on-bit-string z target qs p)
     (x p)))
 
 (operation (reflect-uniform qs)
@@ -48,5 +48,7 @@
 (clear-asserts!)
 
 (define-symbolic n (bitvector num-qubits))
-(verify (assert (<= 0.8 (probability/v (grover-search n) n))))
-(verify (assert (= 1 (probability/v (grover-search n) n))))
+
+(time (verify (assert (<= 0.97 (probability/v (grover-search n) n)))))
+(time (verify (assert (<= 0.8 (probability/v (grover-search n) n)))))
+(time (verify (assert (= 1 (probability/v (grover-search n) n)))))
