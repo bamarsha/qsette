@@ -121,17 +121,9 @@
     [`(z ,q) (apply-gate z-gate q)]
     [`(h ,q) (apply-gate h-gate q)]
     [`(t ,q) (apply-gate t-gate q)]
-    [`(cnot ,controls ,target)
-     (let*-values ([(control-id env*) (interpret-expr controls env)]
-                   [(target-id env**) (interpret-expr target env*)]
-                   [(state**) (environment-state env**)])
-       (values (void)
-               (struct-copy environment env**
-                            [state (column-vector->list
-                                    (apply-controlled x-gate
-                                                      `((,control-id . #t))
-                                                      target-id
-                                                      state**))])))]
+    [`(cnot ,control ,target)
+     (let*-values ([(control-id env*) (interpret-expr control env)])
+       (interpret-expr `(controlled x ,(list control-id) ,target) env*))]
     [`(apply-to-each ,operator ,qubits)
      (let* ([gate (match operator
                     ['x x-gate]
